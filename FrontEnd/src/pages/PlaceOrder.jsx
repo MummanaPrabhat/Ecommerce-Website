@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 
 const PlaceOrder = () => {
     const [method, setMethod] = useState("cod");
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         firstName: "",
         lastName: "",
@@ -20,24 +21,31 @@ const PlaceOrder = () => {
         phone: "",
     });
 
-    const [emailError, setEmailError] = useState("");
-    const [phoneError, setPhoneError] = useState("");
+    const [emailError, setEmailError] = useState(false);
+    const [phoneError, setPhoneError] = useState(false);
 
+    const { navigate, backendUrl, token, cartItems, setCartItems, getCartAmount, delivery_fee, products } =
+        useContext(ShopContext);
+
+    // Handle input change
     const onChangeHandler = (e) => {
         const { name, value } = e.target;
         setFormData((data) => ({ ...data, [name]: value }));
 
+        // Email validation
         if (name === "email") {
-            const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
-            setEmailError(gmailRegex.test(value) ? "" : "Only Gmail addresses are allowed.");
+            const isValid = /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(value);
+            setEmailError(!isValid);
         }
 
+        // Phone number validation (10-digit)
         if (name === "phone") {
-            const phoneRegex = /^[0-9]{10}$/;
-            setPhoneError(phoneRegex.test(value) ? "" : "Enter a valid 10-digit mobile number.");
+            const isValid = /^[6-9]\d{9}$/.test(value);
+            setPhoneError(!isValid);
         }
     };
 
+    // Razorpay Payment
     const initPay = (order) => {
         const options = {
             key: import.meta.env.VITE_RAZORPAY_KEY_ID,
@@ -46,7 +54,6 @@ const PlaceOrder = () => {
             name: "Order Payment",
             description: "Order Payment",
             order_id: order.id,
-            receipt: order.receipt,
             handler: async (response) => {
                 console.log(response);
             },
@@ -55,21 +62,17 @@ const PlaceOrder = () => {
         rzp.open();
     };
 
-    const { navigate, backendUrl, token, cartItems, setCartItems, getCartAmount, delivery_fee, products } =
-        useContext(ShopContext);
-
+    // Handle order submission
     const onSubmitHandler = async (e) => {
         e.preventDefault();
 
-        if (emailError) {
-            toast.error(emailError);
+        if (emailError || phoneError) {
+            toast.error("Please fix the errors before submitting.");
             return;
         }
 
-        if (phoneError) {
-            toast.error(phoneError);
-            return;
-        }
+        if (isSubmitting) return;
+        setIsSubmitting(true);
 
         try {
             let orderItems = [];
@@ -100,6 +103,7 @@ const PlaceOrder = () => {
                     });
                     if (response.data.success) {
                         setCartItems({});
+                        localStorage.removeItem("cartItems"); // ✅ Clear local storage
                         navigate("/orders");
                     } else {
                         toast.error(response.data.message);
@@ -120,6 +124,8 @@ const PlaceOrder = () => {
             }
         } catch (error) {
             toast.error(error.response?.data?.message || "Something went wrong!");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -133,25 +139,14 @@ const PlaceOrder = () => {
                     <input required onChange={onChangeHandler} name="firstName" value={formData.firstName} className="border border-gray-300 rounded py-1.5 px-3.5 w-full" type="text" placeholder="First name" />
                     <input required onChange={onChangeHandler} name="lastName" value={formData.lastName} className="border border-gray-300 rounded py-1.5 px-3.5 w-full" type="text" placeholder="Last name" />
                 </div>
-                <input required onChange={onChangeHandler} name="email" value={formData.email} className="border border-gray-300 rounded py-1.5 px-3.5 w-full" type="email" placeholder="Email address" />
-                {emailError && <p className="text-red-500 text-sm">{emailError}</p>}
-                <input required onChange={onChangeHandler} name="street" value={formData.street} className="border border-gray-300 rounded py-1.5 px-3.5 w-full" type="text" placeholder="Street" />
-                <div className="flex gap-3">
-                    <input required onChange={onChangeHandler} name="city" value={formData.city} className="border border-gray-300 rounded py-1.5 px-3.5 w-full" type="text" placeholder="City" />
-                    <input required onChange={onChangeHandler} name="state" value={formData.state} className="border border-gray-300 rounded py-1.5 px-3.5 w-full" type="text" placeholder="State" />
-                </div>
-                <div className="flex gap-3">
-                    <input required onChange={onChangeHandler} name="zipcode" value={formData.zipcode} className="border border-gray-300 rounded py-1.5 px-3.5 w-full" type="number" placeholder="Zipcode" />
-                    <input required onChange={onChangeHandler} name="country" value={formData.country} className="border border-gray-300 rounded py-1.5 px-3.5 w-full" type="text" placeholder="Country" />
-                </div>
-                <input required onChange={onChangeHandler} name="phone" value={formData.phone} className="border border-gray-300 rounded py-1.5 px-3.5 w-full" type="text" placeholder="Phone" />
-                {phoneError && <p className="text-red-500 text-sm">{phoneError}</p>}
+                <input required onChange={onChangeHandler} name="email" value={formData.email} className={`border ${emailError ? "border-red-500" : "border-gray-300"} rounded py-1.5 px-3.5 w-full`} type="email" placeholder="Email address" />
+                {emailError && <p className="text-red-500 text-sm">Enter a valid Gmail address.</p>}
+                <input required onChange={onChangeHandler} name="phone" value={formData.phone} className={`border ${phoneError ? "border-red-500" : "border-gray-300"} rounded py-1.5 px-3.5 w-full`} type="text" placeholder="Phone" />
+                {phoneError && <p className="text-red-500 text-sm">Enter a valid 10-digit phone number.</p>}
             </div>
 
             <div className="mt-8">
-                <div className="mt-8 min-w-80">
-                    <CartTotal />
-                </div>
+                <CartTotal />
                 <div className="mt-12">
                     <Title text1={"PAYMENT"} text2={"METHOD"} />
                     <div className="flex gap-3 flex-col lg:flex-row">
