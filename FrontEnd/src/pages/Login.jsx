@@ -13,36 +13,35 @@ const Login = () => {
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
+    
+    // Gmail validation using Regex
+    const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+    if (!gmailRegex.test(email)) {
+      toast.error("Please enter a valid Gmail address (e.g., user@gmail.com)");
+      return;
+    }
+  
     try {
-      if (currentState == "Sign Up") {
-        const response = await axios.post(backendUrl + "/api/user/register", {
-          name,
-          email,
-          password,
-        });
-        if (response.data.success) {
-          setToken(response.data.token);
-          localStorage.setItem("token", response.data.token);
-        } else {
-          toast.error(response.data.message);
-        }
+      const endpoint =
+        currentState === "Sign Up" ? "/api/user/register" : "/api/user/login";
+  
+      const payload = currentState === "Sign Up"
+        ? { name, email, password }
+        : { email, password };
+  
+      const response = await axios.post(backendUrl + endpoint, payload);
+  
+      if (response.data.success) {
+        setToken(response.data.token);
+        localStorage.setItem("token", response.data.token);
       } else {
-        const response = await axios.post(backendUrl + "/api/user/login", {
-          email,
-          password,
-        });
-        if (response.data.success) {
-          setToken(response.data.token);
-          localStorage.setItem("token", response.data.token);
-        } else {
-          toast.error(response.data.message);
-        }
+        toast.error(response.data.message);
       }
     } catch (error) {
-      console.log(error.message);
-      toast.error(error.message);
+      toast.error(error.response?.data?.message || "Something went wrong!");
     }
   };
+  
 
   useEffect(() => {
     if (token) {
