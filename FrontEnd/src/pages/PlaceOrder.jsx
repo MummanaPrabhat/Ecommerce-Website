@@ -61,13 +61,11 @@ const PlaceOrder = () => {
     const onSubmitHandler = async (e) => {
         e.preventDefault();
 
-        // Email validation (Only Gmail)
         if (emailError) {
             toast.error(emailError);
             return;
         }
 
-        // Phone number validation (10-digit numeric)
         if (phoneError) {
             toast.error(phoneError);
             return;
@@ -161,11 +159,13 @@ const PlaceOrder = () => {
                             <p className={`min-w-3.5 h-3.5 border rounded-full ${method === "razorpay" ? "bg-green-400" : ""}`}></p>
                             <img className="h-5 mx-4" src={assets.razorpay_logo} alt="" />
                         </div>
+                        <div onClick={() => setMethod("cod")} className="flex items-center gap-3 border p-2 px-3 cursor-pointer">
+                            <p className={`min-w-3.5 h-3.5 border rounded-full ${method === "cod" ? "bg-green-400" : ""}`}></p>
+                            <p className="text-gray-500 text-sm font-medium mx-4">CASH ON DELIVERY</p>
+                        </div>
                     </div>
                     <div className="w-full text-end mt-8">
-                        <button type="submit" className="bg-black text-white px-16 py-3 text-sm">
-                            PLACE ORDER
-                        </button>
+                        <button type="submit" className="bg-black text-white px-16 py-3 text-sm">PLACE ORDER</button>
                     </div>
                 </div>
             </div>
